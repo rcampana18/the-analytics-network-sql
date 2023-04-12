@@ -232,7 +232,7 @@ SELECT sm.nombre, sum(conteo)
 FROM stg.super_store_count as ssc
 LEFT JOIN stg.store_master as sm
 ON ssc.tienda=sm.codigo_tienda
-WHERE date(ssc.fecha::text)>sm.fecha_apertura /*por las dudas para que sea mayor a la fecha de apertura*/
+--WHERE date(ssc.fecha::text)>sm.fecha_apertura /*por las dudas para que sea mayor a la fecha de apertura*/
 GROUP BY sm.nombre
 
 6)Cual es el nivel de inventario promedio en cada mes a nivel de codigo de producto y tienda; 
