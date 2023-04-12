@@ -266,15 +266,12 @@ ON ols.producto=pm.codigo_producto
 GROUP BY material_2 
 
 OPCION 2:
-With material_1 as 	/*material_1 sería una nueva tabla*/
+With material_1 as 
 SELECT *,
 	CASE
 		WHEN material is null then 'Unknown'
-		--WHEN material = 'plastico' then 'Plastico'
-		--WHEN material = 'PLASTICO' then 'Plastico'
-		--WHEN material = 'Metal' then 'Metal'
 		else upper(material)
-		END as material_consolidado 	/*Sería la nueva columna*/	
+		END as material_consolidado	
 FROM stg.order_line_sale as ols
 LEFT JOIN stg.product_master as pm
 ON ols.producto=pm.codigo_producto
@@ -459,3 +456,4 @@ INTO bkp.cost_20230411
 FROM stg.cost
 
 14)El cambio en la tabla "order_line_sale" en el punto 6 fue un error y debemos volver la tabla a su estado original, como lo harias?
+TBD
