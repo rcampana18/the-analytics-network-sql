@@ -15,7 +15,6 @@ SELECT nombre
 FROM stg.product_master
 WHERE categoria='Electro'
 ORDER BY nombre --DESC
---**Cómo hago si tengo valores null en el nombre por ejemplo?
 
 4)Cuales son las TV que se encuentran activas para la venta?
 SELECT nombre
@@ -154,7 +153,7 @@ Select tienda,date(fecha::TEXT),conteo from stg.super_store_count
 SELECT*
 FROM stg.product_master
 WHERE nombre LIKE '%PHILIPS%' and is_active='true'  
---Si tengo variantes de mayúsculas/minúsculas, tengo que incluir las posibles variantes en la query?
+--Si tengo variantes de mayúsculas/minúsculas, tengo que incluir las posibles variantes en la query
 --Cómo sabría si tengo muchas variantes en cómo está escrito Phillips? Hay que conocer la base
 SELECT*
 FROM stg.product_master
@@ -251,7 +250,7 @@ ORDER BY sm.nombre
 7)Calcular la cantidad de unidades vendidas por material. 
 Para los productos que no tengan material usar 'Unknown', homogeneizar los textos si es necesario.
 
-/* Cuál es la diferencia? */
+/* Diferencia? */
 
 OPCION 1:
 SELECT 
@@ -342,7 +341,8 @@ LEFT JOIN stg.product_master as pm
 ON ols.producto=pm.codigo_producto
 GROUP BY orden, subcategoria
 
-CLASE 4
+--CLASE 4--
+
 1)Crear un backup de la tabla product_master. Utilizar un esquema llamada "bkp" y agregar un prefijo al nombre de la tabla con la fecha del backup en forma de numero entero.
 CREATE SCHEMA bkp
 
@@ -451,7 +451,7 @@ VALUES ('Fernando', 'Moralez',null, '2022-04-04',null, 'España', 'Valencia','9'
 
 Drop table bkp.cost_20230411
 
-Select *, now() last_updated_ts 
+Select *, now() as last_updated_ts 
 INTO bkp.cost_20230411
 FROM stg.cost
 
