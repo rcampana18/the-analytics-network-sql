@@ -1,1 +1,107 @@
+--INTEGRADOR PARTE 1--
+
+Generar el valor del KPI en cada mes, mostrando el resultado para todos los meses disponibles.
+Todos los valores monetarios deben ser calculados en dolares usando el tipo de cambio promedio mensual.
+
+KPIs:
+-Ventas brutas, netas y margen
+-Margen por categoria de producto
+-ROI por categoria de producto. ROI = Valor promedio de inventario / ventas netas
+-AOV (Average order value), valor promedio de la orden.
+
+Select * from stg.product_master
+Select * from stg.order_line_sale
+Select * from stg.monthly_average_fx_rate
+Select * from stg.inventory 
+
+/*KPI mensual: VENTAS BRUTAS - NETAS - MARGEN*/
+
+With ventas_usd as(
+SELECT 
+	 Round(CASE
+		WHEN moneda='ARS' then ols.venta/mafr.cotizacion_usd_peso 
+		WHEN moneda='EUR' then ols.venta/mafr.cotizacion_usd_eur 
+		WHEN moneda='URU' then ols.venta/mafr.cotizacion_usd_uru
+	END,2) AS venta_bruta_usd,
+	  Trunc(CASE
+		WHEN moneda='ARS' then (ols.venta+coalesce(ols.descuento,0))/mafr.cotizacion_usd_peso
+		WHEN moneda='EUR' then (ols.venta+coalesce(ols.descuento,0))/mafr.cotizacion_usd_eur
+		WHEN moneda='URU' then (ols.venta+coalesce(ols.descuento,0))/mafr.cotizacion_usd_uru
+	END,2) AS venta_neta_usd,
+	cst.costo_promedio_usd,
+	CAST (CAST(fecha AS text) AS date) AS fecha,
+   CAST (CAST(mes AS text) AS date) AS mes
+FROM stg.order_line_sale as ols
+LEFT JOIN stg.monthly_average_fx_rate as mafr
+ON date_trunc('month',ols.fecha)=date_trunc('month',mafr.mes)
+LEFT JOIN stg.cost as cst
+ON ols.producto=cst.codigo_producto
+)
+SELECT mes, sum(venta_bruta_usd)as Ventas_brutas_usd,sum(venta_neta_usd) as ventas_netas_usd, round(sum(venta_neta_usd-costo_promedio_usd),2) as margen_usd
+FROM ventas_usd
+GROUP BY mes
+
+/*MARGEN POR CATEGORIA DE PRODUCTO*/
+
+With tabla1 as(
+SELECT *,  
+	trunc(CASE
+		WHEN moneda='ARS' then (ols.venta+coalesce(ols.descuento,0))/mafr.cotizacion_usd_peso
+		WHEN moneda='EUR' then (ols.venta+coalesce(ols.descuento,0))/mafr.cotizacion_usd_eur
+		WHEN moneda='URU' then (ols.venta+coalesce(ols.descuento,0))/mafr.cotizacion_usd_uru
+	END,2) AS venta_neta_usd
+FROM stg.order_line_sale as ols
+LEFT JOIN stg.monthly_average_fx_rate as mafr
+ON extract(month from ols.fecha)=extract(month from mafr.mes)
+LEFT JOIN stg.cost as cst
+ON ols.producto=cst.codigo_producto
+JOIN stg.product_master as pm
+ON ols.producto=pm.codigo_producto
+)
+SELECT mes,categoria,round(sum(venta_neta_usd-costo_promedio_usd),2) as margen
+FROM tabla1
+GROUP BY mes,categoria
+
+/*ROI POR CATEGORIA DE PRODUCTO*/
+
+With tabla2 as(
+SELECT *,  
+	trunc(CASE
+		WHEN moneda='ARS' then (ols.venta+coalesce(ols.descuento,0))/mafr.cotizacion_usd_peso
+		WHEN moneda='EUR' then (ols.venta+coalesce(ols.descuento,0))/mafr.cotizacion_usd_eur
+		WHEN moneda='URU' then (ols.venta+coalesce(ols.descuento,0))/mafr.cotizacion_usd_uru
+	END,2) AS venta_neta_usd
+FROM stg.order_line_sale as ols
+LEFT JOIN stg.monthly_average_fx_rate as mafr
+ON extract(month from ols.fecha)=extract(month from mafr.mes)
+LEFT JOIN stg.cost as cst
+ON ols.producto=cst.codigo_producto
+JOIN stg.product_master as pm
+ON ols.producto=pm.codigo_producto
+JOIN stg.inventory as inv
+ON ols.producto=inv.sku
+)
+SELECT mes,categoria,round(avg((inicial+final)/2)*sum(costo_promedio_usd)/sum(venta_neta_usd),2) as ROI
+FROM tabla2
+GROUP BY mes, categoria
+
+/*AOV - Valor promedio de la orden*/
+
+With tabla3 as(
+SELECT *,  
+	trunc(CASE
+		WHEN moneda='ARS' then (ols.venta)/mafr.cotizacion_usd_peso
+		WHEN moneda='EUR' then (ols.venta)/mafr.cotizacion_usd_eur
+		WHEN moneda='URU' then (ols.venta)/mafr.cotizacion_usd_uru
+	END,2) AS valor_orden
+FROM stg.order_line_sale as ols
+LEFT JOIN stg.monthly_average_fx_rate as mafr
+ON extract(month from ols.fecha)=extract(month from mafr.mes)
+)
+SELECT mes, round(sum(valor_orden)/count(distinct orden),2) as AOV
+FROM tabla3
+GROUP BY mes
+
+/*CONTABILIDAD*/
+
 
