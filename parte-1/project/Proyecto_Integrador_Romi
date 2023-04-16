@@ -93,15 +93,62 @@ SELECT *,
 		WHEN moneda='ARS' then (ols.venta)/mafr.cotizacion_usd_peso
 		WHEN moneda='EUR' then (ols.venta)/mafr.cotizacion_usd_eur
 		WHEN moneda='URU' then (ols.venta)/mafr.cotizacion_usd_uru
-	END,2) AS valor_orden
+	END,2) AS venta_bruta
 FROM stg.order_line_sale as ols
 LEFT JOIN stg.monthly_average_fx_rate as mafr
 ON extract(month from ols.fecha)=extract(month from mafr.mes)
 )
-SELECT mes, round(sum(valor_orden)/count(distinct orden),2) as AOV
+SELECT mes,round(sum(venta_bruta)/count(distinct orden),2) as AOV
 FROM tabla3
 GROUP BY mes
 
-/*CONTABILIDAD*/
 
+/*CONTABILIDAD*/
+/*IMPUESTOS PAGADOS - TASA DE IMPUESTO - CREDITOS OTORGADOS*/
+
+With tabla4 as(
+SELECT *,  
+	trunc(CASE
+		WHEN moneda='ARS' then coalesce(ols.impuestos,0)/mafr.cotizacion_usd_peso
+		WHEN moneda='EUR' then coalesce(ols.impuestos,0)/mafr.cotizacion_usd_eur
+		WHEN moneda='URU' then coalesce(ols.impuestos,0)/mafr.cotizacion_usd_uru
+	END,2) AS impuestos_usd,
+	trunc(CASE
+		WHEN moneda='ARS' then (ols.venta+coalesce(ols.descuento,0))/mafr.cotizacion_usd_peso
+		WHEN moneda='EUR' then (ols.venta+coalesce(ols.descuento,0))/mafr.cotizacion_usd_eur
+		WHEN moneda='URU' then (ols.venta+coalesce(ols.descuento,0))/mafr.cotizacion_usd_uru
+	END,2) AS venta_neta_usd,
+	trunc(CASE
+		WHEN moneda='ARS' then coalesce(ols.creditos,0)/mafr.cotizacion_usd_peso
+		WHEN moneda='EUR' then coalesce(ols.creditos,0)/mafr.cotizacion_usd_eur
+		WHEN moneda='URU' then coalesce(ols.creditos,0)/mafr.cotizacion_usd_uru
+	END,2) AS creditos_usd
+FROM stg.order_line_sale as ols
+LEFT JOIN stg.monthly_average_fx_rate as mafr
+ON extract(month from ols.fecha)=extract(month from mafr.mes)
+)
+SELECT mes,
+	sum(impuestos_usd) as Impuestos_pagados, 
+	trunc(sum(impuestos_usd)/sum(venta_neta_usd),4) as Tasa_impuestos,
+	count(creditos_usd)as creditos_otorgados,
+	sum(creditos_usd)as creditos_otorgados_usd
+	FROM tabla4
+GROUP BY mes
+
+/*Valor pagado final por order*/
+With tabla3 as(
+SELECT *,  
+	trunc(CASE
+		WHEN moneda='ARS' then (ols.venta+coalesce(ols.descuento,0)+coalesce(ols.impuestos,0)+coalesce(ols.creditos,0))/mafr.cotizacion_usd_peso
+		WHEN moneda='EUR' then (ols.venta+coalesce(ols.descuento,0)+coalesce(ols.impuestos,0)+coalesce(ols.creditos,0))/mafr.cotizacion_usd_eur
+		WHEN moneda='URU' then (ols.venta+coalesce(ols.descuento,0)+coalesce(ols.impuestos,0)+coalesce(ols.creditos,0))/mafr.cotizacion_usd_uru
+	END,2) AS valor_pagado_final_usd
+FROM stg.order_line_sale as ols
+LEFT JOIN stg.monthly_average_fx_rate as mafr
+ON extract(month from ols.fecha)=extract(month from mafr.mes)
+)
+SELECT mes,orden,sum(valor_pagado_final_usd) as valor_pagado_usd
+FROM tabla3
+GROUP BY mes,orden
+ORDER BY mes
 
