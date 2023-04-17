@@ -152,3 +152,86 @@ FROM tabla3
 GROUP BY mes,orden
 ORDER BY mes
 
+
+/*SUPPLY CHAIN*/
+Costo de inventario promedio por tienda
+Costo del stock de productos que no se vendieron por tienda
+Cantidad y costo de devoluciones
+
+/*Inventario promedio y stock no vendido*/
+
+SELECT TO_CHAR (inv.fecha, 'YYYY-MM') AS año_mes,sm.nombre,
+	   round(avg((inicial+final)/2),2) as inv_prom,
+	   round(avg(((inicial+final)/2)*cst.costo_promedio_usd),2) as costo_inv_prom,
+	   sum(final*cst.costo_promedio_usd) as costo_no_vendido
+FROM stg.inventory as inv
+JOIN stg.store_master as sm
+ON inv.tienda=sm.codigo_tienda
+JOIN stg.cost as cst
+ON inv.sku=cst.codigo_producto
+GROUP BY año_mes,sm.nombre
+ORDER BY año_mes,sm.nombre
+
+/*Cantidad y costo de devoluciones*/
+
+CREATE TABLE stg.return_movements(
+	orden_venta    VARCHAR(255)
+	,envio         VARCHAR(255)
+	,item          VARCHAR(255)
+	,cantidad      INT
+	,id_movimiento INT
+	,desde         VARCHAR(255)
+	,hasta         VARCHAR(255)
+	,recibido_por  VARCHAR(255)
+	,fecha         DATE)
+
+INSERT INTO stg.return_movements
+(orden_venta,envio,item,cantidad,id_movimiento,desde,hasta,recibido_por,fecha)
+VALUES
+('M999000006','R00001','p200010',1,180,'Cliente','Warehouse',null,2022-11-05),
+('M999000006','R00001','p200010',1,181,'Warehouse','Productos Obsoletos',null,2022-11-05),
+('M999000030','R00002','p200088',1,182,'Cliente','Warehouse',null,2022-10-20),
+('M999000030','R00002','p200088',1,183,'Warehouse','Retorno a tienda',null,2022-10-20),
+('M999000041','R00003','p100023',1,184,'Cliente','Warehouse',null,2022-11-14),
+('M999000041','R00003','p100023',1,185,'Warehouse','Retorno a tienda',null,2022-11-15),
+('M999000060','R00004','p200034',1,186,'Cliente','Warehouse',null,2022-12-01),
+('M999000060','R00004','p200034',1,187,'Warehouse','Productos Obsoletos',null,2022-12-01)
+
+SELECT to_char(rm.fecha, 'YYYY-MM') as mes,sum(cantidad) as devoluciones,sum(rm.cantidad*cst.costo_promedio_usd) as costo_devoluciones_usd
+FROM stg.return_movements as rm
+LEFT JOIN stg.cost as cst
+ON rm.item=cst.codigo_producto
+WHERE desde='Cliente'
+GROUP BY mes
+
+/*TIENDAS*/
+Ratio de conversion. Cantidad de ordenes generadas / Cantidad de gente que entra
+
+Select * from stg.super_store_count
+Select * from stg.market_count
+
+With conteo_tiendas2 as(
+	With conteo_tiendas1 as(
+				Select tienda,date(fecha::TEXT) as fecha,conteo 
+				from stg.market_count
+				UNION ALL 
+				Select tienda,date(fecha::TEXT) as fecha,conteo 
+				from stg.super_store_count
+	)
+	SELECT tienda,to_char(ct1.fecha, 'YYYY-MM') as mes, sum(coalesce(conteo,0)) as total_gente
+	FROM conteo_tiendas1 as ct1
+	GROUP BY tienda,mes
+),
+ordenes_tiendas as(
+			SELECT tienda,to_char(fecha, 'YYYY-MM') as mes, count(distinct orden) as ordenes_tienda
+			FROM stg.order_line_sale as ols
+			Group By tienda,mes
+)
+SELECT ct2.mes,ct2.tienda, round(sum(coalesce(ot.ordenes_tienda,0))/sum(ct2.total_gente),10) as Ratio 
+FROM conteo_tiendas2 as ct2
+LEFT JOIN ordenes_tiendas as ot
+ON (ct2.mes||'-'||ct2.tienda)=(ot.mes||'-'||ot.tienda)
+GROUP BY ct2.mes,ct2.tienda 
+ORDER BY mes
+
+
