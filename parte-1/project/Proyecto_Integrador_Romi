@@ -234,4 +234,25 @@ ON (ct2.mes||'-'||ct2.tienda)=(ot.mes||'-'||ot.tienda)
 GROUP BY ct2.mes,ct2.tienda 
 ORDER BY mes
 
+Preguntas de entrevista
+1)Como encuentro duplicados en una tabla. Dar un ejemplo mostrando duplicados de la columna orden en la tabla de ventas.
 
+Select distinct(orden), count(orden)
+from stg.order_line_sale
+group by orden
+having count(orden)>1
+
+2)Como elimino duplicados?
+
+
+
+3)Cual es la diferencia entre UNION y UNION ALL.
+Union ALL incluye duplicados mientras que Union no.
+
+4)Como encuentro registros en una tabla que no estan en otra tabla.
+Para probar podes crear dos tablas con una unica columna id que tengan valores: Tabla 1: 1,2,3,4 Tabla 2: 3,4,5,6
+
+6)Cual es la diferencia entre INNER JOIN y LEFT JOIN. (podes usar la tabla anterior)
+Inner Join toma los valores en comun donde matchean las tablas y trae los valores para esos campos comunes
+de la tabla joineada
+Left Join traera todo lo de la tabla izquierda y lo de la derecha donde haga match con la primera
